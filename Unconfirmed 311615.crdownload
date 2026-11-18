@@ -1,0 +1,64 @@
+"""Gradio app: real-time Named Entity Recognition (PER / ORG / LOC / MISC).
+
+Run locally:   python app.py
+Model source:  a local folder (default: ./ner-distilbert) or a HuggingFace Hub id,
+               set with the MODEL_PATH environment variable, e.g.
+               MODEL_PATH=your-username/ner-distilbert python app.py
+"""
+import os
+
+import gradio as gr
+import torch
+from transformers import pipeline
+
+MODEL_PATH = os.environ.get("MODEL_PATH", "ner-distilbert")
+
+if not os.path.isdir(MODEL_PATH) and "/" not in MODEL_PATH:
+    raise SystemExit(
+        f"Model folder '{MODEL_PATH}' not found.\n"
+        "Put the fine-tuned model folder next to app.py, or set MODEL_PATH to a "
+        "HuggingFace Hub id (e.g. MODEL_PATH=your-username/ner-distilbert)."
+    )
+
+ner = pipeline(
+    "token-classification",
+    model=MODEL_PATH,
+    aggregation_strategy="simple",
+    device=0 if torch.cuda.is_available() else -1,
+)
+
+COLORS = {"PER": "#ff9aa2", "ORG": "#8ecae6", "LOC": "#b5e48c", "MISC": "#ffd6a5"}
+
+EXAMPLES = [
+    "Apple CEO Tim Cook announced a new campus in Austin, Texas.",
+    "Mohamed Salah scored twice for Liverpool against Manchester United at Anfield.",
+    "The United Nations met in Geneva to discuss European Union sanctions.",
+    "Barack Obama visited Microsoft headquarters in Seattle on Monday.",
+]
+
+
+def predict(text):
+    if not text or not text.strip():
+        return {"text": "", "entities": []}
+    entities = ner(text)
+    return {
+        "text": text,
+        "entities": [
+            {"entity": e["entity_group"], "start": e["start"], "end": e["end"]}
+            for e in entities
+        ],
+    }
+
+
+with gr.Blocks(title="NER System") as demo:
+    gr.Markdown(
+        "# Named Entity Recognition\n"
+        "DistilBERT fine-tuned on CoNLL-2003 - **PER / ORG / LOC / MISC**"
+    )
+    inp = gr.Textbox(lines=4, label="Enter text", placeholder="Type or paste any English text...")
+    out = gr.HighlightedText(label="Detected entities", color_map=COLORS, show_legend=True)
+    gr.Examples(EXAMPLES, inputs=inp)
+    inp.change(predict, inp, out)  # real-time highlighting as you type
+
+if __name__ == "__main__":
+    demo.launch()

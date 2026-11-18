@@ -1,0 +1,19 @@
+# model weights and checkpoints (too large for GitHub - host on HuggingFace Hub instead)
+*.pt
+*.pth
+*.bin
+*.safetensors
+ner-distilbert/
+ner-distilbert-ckpt/
+
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# misc
+.DS_Store
+gradio_cached_examples/
+flagged/
